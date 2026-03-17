@@ -1,0 +1,56 @@
+# Simple workflow for deploying static content to GitHub Pages
+name: Deploy static content to Pages
+
+on:
+  # main 브랜치에 코드가 푸시될 때마다 실행됩니다.
+  push:
+    branches: ["main"]
+
+  # Actions 탭에서 수동으로도 실행할 수 있게 합니다.
+  workflow_dispatch:
+
+# GitHub Pages 배포를 위한 권한 설정
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 중복 배포 방지 설정
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Build
+        run: npm run build
+        
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # 빌드 결과물인 dist 폴더를 업로드합니다.
+          path: './dist'
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
