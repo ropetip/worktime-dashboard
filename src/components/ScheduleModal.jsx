@@ -14,6 +14,7 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
   useEffect(() => {
     if (initialData) {
       setFormData({
+        id: initialData.id || null,
         date: initialData.date || '',
         name: initialData.name || '',
         time: initialData.time || '0900',
@@ -21,6 +22,7 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
       });
     } else {
       setFormData({
+        id: null,
         date: new Date().toISOString().split('T')[0],
         name: '',
         time: '0900',
@@ -44,6 +46,7 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
   const handleReset = () => {
     if (initialData) {
       setFormData({
+        id: initialData.id || null,
         date: initialData.date || '',
         name: initialData.name || '',
         time: initialData.time || '0900',
@@ -116,20 +119,6 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
 
           <div className="modal-actions">
             <div className="footer-left">
-              {initialData?.isEdit && (
-                <button 
-                  type="button" 
-                  className="btn btn-delete" 
-                  onClick={() => {
-                    if (window.confirm('정말 삭제하시겠습니까?')) {
-                      onDelete(formData.date, formData.name);
-                      onClose();
-                    }
-                  }}
-                >
-                  삭제
-                </button>
-              )}
               <button 
                 type="button" 
                 className="btn btn-reset" 
@@ -139,6 +128,20 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
               </button>
             </div>
             <button type="button" className="btn btn-cancel" onClick={onClose}>닫기</button>
+            {initialData?.isEdit && (
+              <button 
+                type="button" 
+                className="btn btn-delete" 
+                onClick={() => {
+                  if (window.confirm('정말 삭제하시겠습니까?')) {
+                    onDelete(formData.id);
+                    onClose();
+                  }
+                }}
+              >
+                삭제
+              </button>
+            )}
             <button type="submit" className="btn btn-save">저장</button>
           </div>
         </form>

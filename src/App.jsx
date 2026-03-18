@@ -68,6 +68,7 @@ function App() {
       }
       
       mergedData[dateStr].shifts.push({ 
+        id: item.id, // ID 추가
         name: item.name, 
         time: item.time, 
         reason: item.reason 
@@ -78,18 +79,24 @@ function App() {
   }, [dbShifts]);
 
   const handleSaveSchedule = async (formData) => {
-    const { date, name, time, reason } = formData;
+    const { id, date, name, time, reason } = formData;
     
-    // Supabase에 저장 (있으면 업데이트, 없으면 삽입)
-    // 여기서 (date, name) 조합을 유니크하게 관리하는 것이 좋음. 
-    // 하지만 일단은 해당 이름의 해당 날짜 데이터를 모두 지우고 새로 넣는 방식으로 처리하거나
-    // 간단히 insert 시도 (RLS 정책에 따라 다를 수 있음)
-    const { error } = await supabase
-      .from('schedules')
-      .insert([{ date, name, time, reason }]);
+    let result;
+    if (id) {
+      // 수정 (Update)
+      result = await supabase
+        .from('schedules')
+        .update({ date, name, time, reason })
+        .eq('id', id);
+    } else {
+      // 신규 추가 (Insert)
+      result = await supabase
+        .from('schedules')
+        .insert([{ date, name, time, reason }]);
+    }
 
-    if (error) {
-      console.error('Error saving schedule:', error);
+    if (result.error) {
+      console.error('Error saving schedule:', result.error);
       alert('일정 저장 중 오류가 발생했습니다.');
     } else {
       fetchSchedules(); // 목록 갱신
@@ -97,11 +104,11 @@ function App() {
     }
   };
 
-  const handleDeleteSchedule = async (date, name) => {
+  const handleDeleteSchedule = async (id) => {
     const { error } = await supabase
       .from('schedules')
       .delete()
-      .match({ date, name });
+      .eq('id', id);
 
     if (error) {
       console.error('Error deleting schedule:', error);
