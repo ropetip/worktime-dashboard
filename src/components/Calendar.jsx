@@ -89,7 +89,7 @@ const Calendar = ({ currentDate, setCurrentDate, shiftsData, onDateClick, onAddC
             <div className="shift-tags-container">
               {sortedShifts.map((shift, idx) => (
                 <ShiftTag 
-                  key={`${formattedDate}-${shift.name}`} 
+                  key={shift.id || `${formattedDate}-${shift.name}-${idx}`} 
                   shift={shift} 
                   onClick={() => onShiftClick(formattedDate, shift)}
                 />
