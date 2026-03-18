@@ -2,6 +2,7 @@ import React from 'react';
 import { countAfter18, SHIFT_TIMES } from '../lib/rotationLogic';
 import { Check, AlertTriangle } from 'lucide-react';
 import { format, isWeekend } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 const Dashboard = ({ selectedDate, shiftsData }) => {
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
@@ -29,10 +30,11 @@ const Dashboard = ({ selectedDate, shiftsData }) => {
   return (
     <div className="dashboard">
       <div className="dashboard-header">
-        <div>
-          <span className="selected-date-text">
-            선택된 날짜: {dateKey}
-          </span>
+        <div className="dashboard-title-area">
+          <div className="selected-date-badge">
+            <span className="label">선택된 날짜</span>
+            <span className="value">{format(selectedDate, 'yyyy년 MM월 dd일 (EEEE)', { locale: ko })}</span>
+          </div>
           <h1>📅 파트 근무 현황 대시보드</h1>
         </div>
         <div className="header-actions">

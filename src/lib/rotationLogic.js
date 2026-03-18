@@ -13,6 +13,8 @@ export const SHIFT_TIMES = {
   'OUTSIDE': { label: '외근', time: 'OUTSIDE', color: 'var(--color-outside)' },
 };
 
+export const SHIFT_ORDER = ['0800', '0830', '0900', '0930', '1000', 'OFF', 'OUTSIDE'];
+
 /**
  * 특정 월의 기본 근무 데이터를 생성합니다.
  * @param {Date} targetDate 해당 월의 Date 객체

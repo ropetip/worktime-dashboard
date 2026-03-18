@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MEMBERS, SHIFT_TIMES } from '../lib/rotationLogic';
+import { MEMBERS, SHIFT_TIMES, SHIFT_ORDER } from '../lib/rotationLogic';
 import { X } from 'lucide-react';
 
 const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
@@ -41,12 +41,32 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
     onClose();
   };
 
+  const handleReset = () => {
+    if (initialData) {
+      setFormData({
+        date: initialData.date || '',
+        name: initialData.name || '',
+        time: initialData.time || '0900',
+        reason: initialData.reason || ''
+      });
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        name: '',
+        time: '0900',
+        reason: ''
+      }));
+    }
+  };
+
   return (
     <div className="modal-backdrop show" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          {initialData?.isEdit ? '일정 수정' : '특이 일정 등록'}
-          <button className="close-btn" onClick={onClose}><X size={20} /></button>
+          <span>{initialData?.isEdit ? '일정 수정' : '일정 등록'}</span>
+          <button className="close-btn" onClick={onClose}>
+            <X size={18} strokeWidth={2.5} />
+          </button>
         </div>
         
         {error && <div className="modal-error-msg">{error}</div>}
@@ -78,8 +98,8 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
               value={formData.time}
               onChange={e => setFormData({ ...formData, time: e.target.value })}
             >
-              {Object.entries(SHIFT_TIMES).map(([key, val]) => (
-                <option key={key} value={key}>{val.label}</option>
+              {SHIFT_ORDER.map(key => (
+                <option key={key} value={key}>{SHIFT_TIMES[key].label}</option>
               ))}
             </select>
           </div>
@@ -95,8 +115,8 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
           </div>
 
           <div className="modal-actions">
-            {initialData?.isEdit && (
-              <div className="footer-left">
+            <div className="footer-left">
+              {initialData?.isEdit && (
                 <button 
                   type="button" 
                   className="btn btn-delete" 
@@ -109,9 +129,16 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
                 >
                   삭제
                 </button>
-              </div>
-            )}
-            <button type="button" className="btn btn-cancel" onClick={onClose}>취소</button>
+              )}
+              <button 
+                type="button" 
+                className="btn btn-reset" 
+                onClick={handleReset}
+              >
+                초기화
+              </button>
+            </div>
+            <button type="button" className="btn btn-cancel" onClick={onClose}>닫기</button>
             <button type="submit" className="btn btn-save">저장</button>
           </div>
         </form>

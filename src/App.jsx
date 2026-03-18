@@ -57,10 +57,9 @@ function App() {
     };
   }, [currentDate]);
 
-  // 기본 로테이션 데이터와 DB 데이터를 합쳐서 최종 데이터 생성
+  // DB 데이터를 기반으로 최종 데이터 생성
   const shiftsData = useMemo(() => {
-    const baseData = generateDefaultMonthlyShifts(currentDate);
-    const mergedData = { ...baseData };
+    const mergedData = {};
 
     dbShifts.forEach(item => {
       const dateStr = item.date;
@@ -68,17 +67,15 @@ function App() {
         mergedData[dateStr] = { shifts: [], isEdited: true };
       }
       
-      // 이름이 같은 기존 데이터가 있으면 제거하고 새 데이터 추가
-      const filteredShifts = mergedData[dateStr].shifts.filter(s => s.name !== item.name);
-      mergedData[dateStr] = {
-        ...mergedData[dateStr],
-        shifts: [...filteredShifts, { name: item.name, time: item.time, reason: item.reason }],
-        isEdited: true
-      };
+      mergedData[dateStr].shifts.push({ 
+        name: item.name, 
+        time: item.time, 
+        reason: item.reason 
+      });
     });
 
     return mergedData;
-  }, [currentDate, dbShifts]);
+  }, [dbShifts]);
 
   const handleSaveSchedule = async (formData) => {
     const { date, name, time, reason } = formData;
