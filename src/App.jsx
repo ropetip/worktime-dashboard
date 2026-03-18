@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { format, isSameMonth, parseISO } from 'date-fns';
+import React, { useState, useEffect, useMemo } from 'react';
+import { format, isSameMonth, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { generateDefaultMonthlyShifts } from './lib/rotationLogic';
+import { supabase } from './lib/supabase';
 import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
 import ScheduleModal from './components/ScheduleModal';
@@ -10,77 +11,107 @@ const STORAGE_KEY = 'worktime_dashboard_shifts';
 function App() {
   const [currentDate, setCurrentDate] = useState(new Date()); // 달력 표시 기준 월
   const [selectedDate, setSelectedDate] = useState(new Date()); // 대시보드 표시 날짜
-  const [shiftsData, setShiftsData] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse shifts data', e);
-      }
-    }
-    // 기본 데이터 생성 (현재 월 기준)
-    return generateDefaultMonthlyShifts(new Date());
-  });
+  const [dbShifts, setDbShifts] = useState([]); // DB에서 가져온 특이 일정 데이터
+  const [loading, setLoading] = useState(true);
 
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     initialData: null
   });
 
-  // 데이터 변경 시 로컬 스토리지 저장
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(shiftsData));
-  }, [shiftsData]);
+  // DB에서 데이터 가져오기
+  const fetchSchedules = async () => {
+    setLoading(true);
+    const start = format(startOfMonth(currentDate), 'yyyy-MM-dd');
+    const end = format(endOfMonth(currentDate), 'yyyy-MM-dd');
 
-  // 새로운 달로 이동할 때 해당 월의 기본 데이터가 없으면 생성
-  useEffect(() => {
-    const monthKey = format(currentDate, 'yyyy-MM');
-    // 간단하게 첫 날의 데이터가 있는지 확인 (실제로는 더 정교할 필요가 있음)
-    const firstDayKey = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1), 'yyyy-MM-dd');
-    
-    if (!shiftsData[firstDayKey]) {
-      const newMonthData = generateDefaultMonthlyShifts(currentDate);
-      setShiftsData(prev => ({ ...newMonthData, ...prev }));
+    const { data, error } = await supabase
+      .from('schedules')
+      .select('*')
+      .gte('date', start)
+      .lte('date', end);
+
+    if (error) {
+      console.error('Error fetching schedules:', error);
+    } else {
+      setDbShifts(data || []);
     }
-  }, [currentDate]);
-
-  const handleSaveSchedule = (formData) => {
-    const { date, name, time, reason } = formData;
-    
-    setShiftsData(prev => {
-      const newData = { ...prev };
-      if (!newData[date]) {
-        newData[date] = { shifts: [], isEdited: true };
-      }
-      
-      // 기존 인원 삭제 후 추가 (덮어쓰기)
-      const filteredShifts = newData[date].shifts.filter(s => s.name !== name);
-      newData[date] = {
-        ...newData[date],
-        shifts: [...filteredShifts, { name, time, reason }],
-        isEdited: true
-      };
-      
-      return newData;
-    });
-    
-    // 저장 후 해당 날짜로 대시보드 갱신
-    setSelectedDate(parseISO(date));
+    setLoading(false);
   };
 
-  const handleDeleteSchedule = (date, name) => {
-    setShiftsData(prev => {
-      const newData = { ...prev };
-      if (newData[date]) {
-        newData[date] = {
-          ...newData[date],
-          shifts: newData[date].shifts.filter(s => s.name !== name),
-          isEdited: true
-        };
+  // 초기 로드 및 월 변경 시 페칭
+  useEffect(() => {
+    fetchSchedules();
+
+    // 실시간 구독 설정
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'schedules' }, 
+        () => fetchSchedules()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentDate]);
+
+  // 기본 로테이션 데이터와 DB 데이터를 합쳐서 최종 데이터 생성
+  const shiftsData = useMemo(() => {
+    const baseData = generateDefaultMonthlyShifts(currentDate);
+    const mergedData = { ...baseData };
+
+    dbShifts.forEach(item => {
+      const dateStr = item.date;
+      if (!mergedData[dateStr]) {
+        mergedData[dateStr] = { shifts: [], isEdited: true };
       }
-      return newData;
+      
+      // 이름이 같은 기존 데이터가 있으면 제거하고 새 데이터 추가
+      const filteredShifts = mergedData[dateStr].shifts.filter(s => s.name !== item.name);
+      mergedData[dateStr] = {
+        ...mergedData[dateStr],
+        shifts: [...filteredShifts, { name: item.name, time: item.time, reason: item.reason }],
+        isEdited: true
+      };
     });
+
+    return mergedData;
+  }, [currentDate, dbShifts]);
+
+  const handleSaveSchedule = async (formData) => {
+    const { date, name, time, reason } = formData;
+    
+    // Supabase에 저장 (있으면 업데이트, 없으면 삽입)
+    // 여기서 (date, name) 조합을 유니크하게 관리하는 것이 좋음. 
+    // 하지만 일단은 해당 이름의 해당 날짜 데이터를 모두 지우고 새로 넣는 방식으로 처리하거나
+    // 간단히 insert 시도 (RLS 정책에 따라 다를 수 있음)
+    const { error } = await supabase
+      .from('schedules')
+      .insert([{ date, name, time, reason }]);
+
+    if (error) {
+      console.error('Error saving schedule:', error);
+      alert('일정 저장 중 오류가 발생했습니다.');
+    } else {
+      fetchSchedules(); // 목록 갱신
+      setSelectedDate(parseISO(date));
+    }
+  };
+
+  const handleDeleteSchedule = async (date, name) => {
+    const { error } = await supabase
+      .from('schedules')
+      .delete()
+      .match({ date, name });
+
+    if (error) {
+      console.error('Error deleting schedule:', error);
+      alert('일정 삭제 중 오류가 발생했습니다.');
+    } else {
+      fetchSchedules(); // 목록 갱신
+    }
   };
 
   return (
