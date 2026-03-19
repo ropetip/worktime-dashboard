@@ -927,6 +927,106 @@ body {
     border-radius: 10px;
 }
 
+.preset-modal {
+    max-width: 850px;
+    width: 95%;
+}
+
+.rules-grid-advanced {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 16px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 4px;
+    margin-top: 10px;
+}
+
+.day-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.day-card-header {
+    background: #f8fafc;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+}
+
+.day-label-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.day-indicator {
+    width: 4px;
+    height: 16px;
+    border-radius: 2px;
+}
+
+.day-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
+.day-rows {
+    padding: 4px 0;
+    min-height: 60px;
+}
+
+.rule-row-static {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.rule-row-static:last-child {
+    border-bottom: none;
+}
+
+.static-name {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+.select-time-premium {
+    min-width: 140px;
+    padding: 6px 10px !important;
+    font-size: 0.85rem !important;
+    border-radius: 8px !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    cursor: pointer;
+}
+
+.rules-grid-advanced::-webkit-scrollbar {
+    width: 6px;
+}
+
+.rules-grid-advanced::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.rules-grid-advanced::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.mr-2 { margin-right: 0.5rem; }
+
 .header-actions-fixed {
     display: flex;
     justify-content: flex-end;
