@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MEMBERS, SHIFT_TIMES, SHIFT_ORDER } from '../lib/rotationLogic';
+import { SHIFT_TIMES, SHIFT_ORDER } from '../lib/rotationLogic';
 import { X } from 'lucide-react';
 
-const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
+const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData, members }) => {
   const [formData, setFormData] = useState({
     date: '',
     name: '',
@@ -91,7 +91,7 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
               onChange={e => setFormData({ ...formData, name: e.target.value })}
             >
               <option value="">선택</option>
-              {MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
+              {members.map(m => <option key={m.id || m.name} value={m.name}>{m.name}</option>)}
             </select>
           </div>
           

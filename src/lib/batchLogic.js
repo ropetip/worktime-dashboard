@@ -21,16 +21,18 @@ export const generateMonthlyBatchData = (dateStr, rules) => {
     if (isWeekend(day)) return;
 
     const dayOfWeek = getDay(day); // 0(일)~6(토)
-    const attendee = rules[dayOfWeek];
+    const dayRules = rules[dayOfWeek] || [];
 
-    if (attendee) {
-      batchData.push({
-        date: format(day, 'yyyy-MM-dd'),
-        name: attendee,
-        time: '0900',
-        reason: '월간 프리셋 자동 생성'
-      });
-    }
+    dayRules.forEach(rule => {
+      if (rule.name) {
+        batchData.push({
+          date: format(day, 'yyyy-MM-dd'),
+          name: rule.name,
+          time: rule.time || '0900',
+          reason: '월간 프리셋 자동 생성'
+        });
+      }
+    });
   });
 
   return batchData;

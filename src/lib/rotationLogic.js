@@ -1,7 +1,7 @@
 import { startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, format, getDay } from 'date-fns';
 
-export const MEMBERS = ['경진', '준', '지원', '미진', '주봉', '대현'];
-export const ROTATION_MEMBERS = ['준', '지원', '미진', '주봉', '대현'];
+// 기존 하드코딩된 MEMBERS, ROTATION_MEMBERS 상수는 제거되었습니다.
+// 컴포넌트 레벨에서 DB 데이터를 통해 관리됩니다.
 
 export const SHIFT_TIMES = {
   '0800': { label: '08:00 ~ 17:00', time: '0800', color: 'var(--color-0800)' },

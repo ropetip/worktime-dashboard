@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { format, isSameMonth, parseISO, startOfMonth, endOfMonth } from 'date-fns';
-import { generateDefaultMonthlyShifts } from './lib/rotationLogic';
 import { supabase } from './lib/supabase';
 import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
 import ScheduleModal from './components/ScheduleModal';
 import PresetManagement from './components/PresetManagement';
-import { Settings } from 'lucide-react';
+import MemberManagement from './components/MemberManagement';
+import { Settings, Users } from 'lucide-react';
+import { fetchMembers } from './memberLogic';
 
 const STORAGE_KEY = 'worktime_dashboard_shifts';
 
@@ -14,6 +15,7 @@ function App() {
   const [currentDate, setCurrentDate] = useState(new Date()); // 달력 표시 기준 월
   const [selectedDate, setSelectedDate] = useState(new Date()); // 대시보드 표시 날짜
   const [dbShifts, setDbShifts] = useState([]); // DB에서 가져온 특이 일정 데이터
+  const [members, setMembers] = useState([]); // DB에서 가져온 인원 데이터
   const [loading, setLoading] = useState(true);
 
   const [modalConfig, setModalConfig] = useState({
@@ -22,10 +24,14 @@ function App() {
   });
 
   const [isPresetOpen, setIsPresetOpen] = useState(false);
+  const [isMemberOpen, setIsMemberOpen] = useState(false);
 
   // DB에서 데이터 가져오기
   const fetchSchedules = async () => {
     setLoading(true);
+    const mData = await fetchMembers();
+    setMembers(mData || []);
+
     const start = format(startOfMonth(currentDate), 'yyyy-MM-dd');
     const end = format(endOfMonth(currentDate), 'yyyy-MM-dd');
 
@@ -126,6 +132,13 @@ function App() {
     <div className="container">
       <div className="header-actions-fixed">
         <button 
+          className="btn-preset-open mr-2" 
+          onClick={() => setIsMemberOpen(true)}
+          style={{ borderColor: '#e2e8f0' }}
+        >
+          <Users size={16} /> 구성원 관리
+        </button>
+        <button 
           className="btn-preset-open" 
           onClick={() => setIsPresetOpen(true)}
         >
@@ -159,12 +172,24 @@ function App() {
         onSave={handleSaveSchedule}
         onDelete={handleDeleteSchedule}
         initialData={modalConfig.initialData}
+        members={members}
       />
 
       <PresetManagement 
         isOpen={isPresetOpen}
         onClose={() => setIsPresetOpen(false)}
         onSuccess={fetchSchedules}
+        members={members}
+      />
+
+      <MemberManagement
+        isOpen={isMemberOpen}
+        onClose={() => setIsMemberOpen(false)}
+        members={members}
+        onMemberUpdate={async () => {
+          const mData = await fetchMembers();
+          setMembers(mData || []);
+        }}
       />
     </div>
   );
