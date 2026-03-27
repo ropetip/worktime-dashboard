@@ -6,8 +6,9 @@ import Calendar from './components/Calendar';
 import ScheduleModal from './components/ScheduleModal';
 import PresetManagement from './components/PresetManagement';
 import MemberManagement from './components/MemberManagement';
-import { Settings, Users } from 'lucide-react';
+import { Settings, Users, LogOut } from 'lucide-react';
 import { fetchMembers } from './memberLogic';
+import Login from './components/Login';
 
 const STORAGE_KEY = 'worktime_dashboard_shifts';
 
@@ -25,6 +26,9 @@ function App() {
 
   const [isPresetOpen, setIsPresetOpen] = useState(false);
   const [isMemberOpen, setIsMemberOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    localStorage.getItem('isAuthenticated') === 'true'
+  );
 
   // DB에서 데이터 가져오기
   const fetchSchedules = async () => {
@@ -128,9 +132,27 @@ function App() {
     }
   };
 
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userEmail');
+    setIsAuthenticated(false);
+  };
+
   return (
     <div className="container">
       <div className="header-actions-fixed">
+        <button 
+          className="btn-preset-open mr-2"
+          onClick={handleLogout}
+          title="로그아웃"
+          style={{ borderColor: '#e2e8f0', color: '#ef4444' }}
+        >
+          <LogOut size={16} /> 로그아웃
+        </button>
         <button 
           className="btn-preset-open mr-2" 
           onClick={() => setIsMemberOpen(true)}
