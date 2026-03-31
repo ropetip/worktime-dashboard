@@ -22,11 +22,14 @@ export const sendOTPViaFlow = async (email, otpCode) => {
             body: { email, otpCode }
         });
 
+        //console.log("Edge Function Response Data:", data);
+
         if (error) {
             console.error("Edge Function 호출 오류:", error);
             return { success: false, error: error.message };
         }
 
+        // 데이터 내부의 실제 성공 여부 체크 (필요한 경우)
         return { success: true, data };
     } catch (error) {
         console.error("인증 전송 프로세스 예외:", error);

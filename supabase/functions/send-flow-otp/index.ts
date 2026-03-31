@@ -45,18 +45,41 @@ serve(async (req) => {
       body: JSON.stringify(payload)
     })
 
-    const result = await response.json()
+    // 응답을 텍스트로 먼저 받음 (URL 인코딩되어 올 수 있음)
+    const rawText = await response.text()
+    console.log("FLOW API Raw Response:", rawText)
 
-    return new Response(JSON.stringify(result), {
+    let finalResult = null
+    try {
+      // URL 인코딩된 문자열(%7B%22... )인 경우 디코딩 시도
+      let decodedText = rawText;
+      if (rawText.includes('%7B')) {
+        decodedText = decodeURIComponent(rawText);
+        console.log("Decoded Flow Response:", decodedText);
+      }
+      
+      finalResult = JSON.parse(decodedText)
+    } catch (parseError: any) {
+      console.error("JSON Parsing Error:", parseError?.message || String(parseError))
+      // 파싱 실패 시 원본 텍스트를 포함하여 응답
+      finalResult = { error: "Parse Error", raw: rawText }
+    }
+
+    // FLOW 응답의 RSLT 코드가 00이면 성공으로 간주함 (필요 시 수정 가능)
+    // 혹은 상태 코드가 200이면 성공으로 통과시킴
+    const isSuccess = response.ok || (finalResult && finalResult.JSONData && finalResult.JSONData.RSLT === "00")
+
+    return new Response(JSON.stringify(finalResult), {
       headers: { 
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*' 
       },
-      status: response.status,
+      status: isSuccess ? 200 : response.status,
     })
 
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: any) {
+    console.error("Edge Function Runtime Error:", error?.message || String(error))
+    return new Response(JSON.stringify({ error: error?.message || "Unknown error" }), {
       headers: { 
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*' 
