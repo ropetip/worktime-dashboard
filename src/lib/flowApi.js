@@ -74,7 +74,7 @@ export const verifyOTP = async (email, otpCode) => {
         .eq('otp_code', otpCode)
         .eq('is_used', false)
         .gt('expires_at', now)
-        .order('created_at', { ascending: false })
+        .order('create_dt', { ascending: false })
         .limit(1);
 
     if (error || !data || data.length === 0) {

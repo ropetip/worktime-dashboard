@@ -20,9 +20,10 @@ export const fetchMembers = async () => {
  * 새로운 구성원을 추가합니다.
  */
 export const addMember = async (name) => {
+  const userEmail = localStorage.getItem('userEmail') || 'unknown';
   const { data, error } = await supabase
     .from('members')
-    .insert([{ name }])
+    .insert([{ name, create_id: userEmail }])
     .select();
 
   if (error) throw error;

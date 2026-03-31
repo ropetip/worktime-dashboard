@@ -29,7 +29,7 @@ export const generateMonthlyBatchData = (dateStr, rules) => {
           date: format(day, 'yyyy-MM-dd'),
           name: rule.name,
           time: rule.time || '0900',
-          reason: '월간 프리셋 자동 생성'
+          reason: '프리셋'
         });
       }
     });
@@ -56,16 +56,22 @@ export const executeBatchInsert = async (dateStr, batchData) => {
     .delete()
     .gte('date', start)
     .lte('date', end)
-    .eq('reason', '월간 프리셋 자동 생성'); // 프리셋으로 생성된 것만 삭제
+    .eq('reason', '프리셋'); // 프리셋으로 생성된 것만 삭제
 
   if (deleteError) throw deleteError;
 
   // 2. 새로운 데이터 삽입
   if (batchData.length === 0) return;
 
+  const userEmail = localStorage.getItem('userEmail') || 'unknown';
+  const finalBatchData = batchData.map(item => ({
+    ...item,
+    create_id: userEmail
+  }));
+
   const { error: insertError } = await supabase
     .from('schedules')
-    .insert(batchData);
+    .insert(finalBatchData);
 
   if (insertError) throw insertError;
 

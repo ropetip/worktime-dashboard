@@ -299,7 +299,7 @@ body {
 
 .calendar-day {
     background: #ffffff;
-    min-height: 120px;
+    height: 350px; /* 고정 높이 */
     padding: 8px;
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
@@ -1092,4 +1092,140 @@ body {
     flex-direction: column;
     gap: 4px;
     margin-top: 4px;
+    height: calc(100% - 25px); /* 날짜 숫자 제외 남은 높이 */
+    overflow-y: auto;
+    padding-right: 2px;
+    scrollbar-gutter: stable; /* 스크롤바 공간 미리 확보하여 너비 축소 방지 */
+}
+
+/* 달력 셀 전용 얇은 스크롤바 */
+.shift-tags-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.shift-tags-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.shift-tags-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* --------------------------
+    Confirm Modal (Custom Alert/Confirm)
+   -------------------------- */
+.confirm-modal-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    animation: modalBackdropFade 0.3s ease;
+}
+
+.confirm-modal-content {
+    background: #ffffff;
+    padding: 32px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    text-align: center;
+    animation: modalScaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.confirm-modal-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.modal-icon {
+    padding: 12px;
+    border-radius: 50%;
+    background: #f8fafc;
+}
+
+.modal-icon.text-red { color: #ef4444; background: #fef2f2; }
+.modal-icon.text-blue { color: #3b82f6; background: #eff6ff; }
+.modal-icon.text-yellow { color: #f59e0b; background: #fffbeb; }
+.modal-icon.text-green { color: #10b981; background: #ecfdf5; }
+
+.confirm-modal-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+}
+
+.confirm-modal-message {
+    font-size: 1rem;
+    color: var(--text-sub);
+    line-height: 1.6;
+    margin-bottom: 32px;
+}
+
+.confirm-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.confirm-modal-actions button {
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+}
+
+.btn-confirm-cancel {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.btn-confirm-cancel:hover {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.btn-confirm-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-confirm-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(74, 110, 224, 0.3);
+}
+
+.btn-confirm-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-confirm-danger:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+@keyframes modalBackdropFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes modalScaleUp {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
 }

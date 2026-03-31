@@ -57,22 +57,54 @@ const Login = ({ onLoginSuccess }) => {
 
     // OTP 입력 처리
     const handleOtpChange = (index, value) => {
-        if (isNaN(value)) return;
+        // 숫자만 허용 (빈 문자열은 백스페이스 처리를 위해 허용)
+        if (value !== '' && isNaN(value)) return;
         
         const newOtp = [...otpCode];
+        // 한 글자만 유지
         newOtp[index] = value.substring(value.length - 1);
         setOtpCode(newOtp);
 
-        // 자동 포커스 이동
+        // 값 입력 시 다음 칸으로 자동 포커스 이동
         if (value && index < 5) {
             document.getElementById(`otp-${index + 1}`).focus();
         }
     };
 
     const handleKeyDown = (index, e) => {
-        if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
+        if (e.key === 'Backspace') {
+            if (!otpCode[index] && index > 0) {
+                // 현재 칸이 비어있으면 이전 칸으로 이동하며 지움
+                const newOtp = [...otpCode];
+                newOtp[index - 1] = '';
+                setOtpCode(newOtp);
+                document.getElementById(`otp-${index - 1}`).focus();
+            } else if (otpCode[index]) {
+                // 현재 칸에 값이 있으면 지우기만 함 (기본 동작)
+            }
+        } else if (e.key === 'Delete' && index < 5) {
+            // Delete 키 누르면 현재 값 지우고 다음 칸은 그대로 (기본 동작 유지 가능)
+        } else if (e.key === 'ArrowLeft' && index > 0) {
             document.getElementById(`otp-${index - 1}`).focus();
+        } else if (e.key === 'ArrowRight' && index < 5) {
+            document.getElementById(`otp-${index + 1}`).focus();
         }
+    };
+
+    const handlePaste = (e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').slice(0, 6); // 최대 6자리
+        if (!/^\d+$/.test(pastedData)) return; // 숫자만 포함된 경우만 처리
+
+        const newOtp = [...otpCode];
+        pastedData.split('').forEach((char, index) => {
+            if (index < 6) newOtp[index] = char;
+        });
+        setOtpCode(newOtp);
+
+        // 마지막 입력 칸 또는 채워진 마지막 칸으로 포커스 이동
+        const nextIndex = Math.min(pastedData.length, 5);
+        document.getElementById(`otp-${nextIndex}`).focus();
     };
 
     // OTP 검증 핸들러
@@ -147,6 +179,7 @@ const Login = ({ onLoginSuccess }) => {
                                         value={digit}
                                         onChange={(e) => handleOtpChange(index, e.target.value)}
                                         onKeyDown={(e) => handleKeyDown(index, e)}
+                                        onPaste={handlePaste}
                                         maxLength={1}
                                         autoFocus={index === 0}
                                     />

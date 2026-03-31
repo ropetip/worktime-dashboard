@@ -4,7 +4,7 @@ import { generateMonthlyBatchData, executeBatchInsert } from '../lib/batchLogic'
 import { X, Calendar as CalendarIcon, Play, AlertCircle } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 
-const PresetManagement = ({ isOpen, onClose, onSuccess, members }) => {
+const PresetManagement = ({ isOpen, onClose, onSuccess, members, setConfirmConfig }) => {
   const [targetMonth, setTargetMonth] = useState(format(addMonths(new Date(), 1), 'yyyy-MM'));
   const [rules, setRules] = useState({});
   const [loading, setLoading] = useState(false);
@@ -34,24 +34,43 @@ const PresetManagement = ({ isOpen, onClose, onSuccess, members }) => {
     });
   };
 
-  const handleExecute = async () => {
-    if (!window.confirm(`${targetMonth}월 데이터를 생성하시겠습니까?\n(기존에 자동으로 생성된 동일 월의 데이터는 삭제 후 재생성됩니다.)`)) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const batchData = generateMonthlyBatchData(targetMonth, rules);
-      await executeBatchInsert(targetMonth, batchData);
-      alert(`${targetMonth}월 배치 처리가 완료되었습니다. (${batchData.length}건)`);
-      if (onSuccess) onSuccess();
-      onClose();
-    } catch (error) {
-      console.error('Batch execution failed:', error);
-      alert('배치 실행 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
+  const handleExecute = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: '배치 생성',
+      message: `${targetMonth}월 데이터를 생성하시겠습니까?\n(기존에 자동으로 생성된 동일 월의 데이터는 삭제 후 재생성됩니다.)`,
+      type: 'warning',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          const batchData = generateMonthlyBatchData(targetMonth, rules);
+          await executeBatchInsert(targetMonth, batchData);
+          
+          setConfirmConfig({
+            isOpen: true,
+            title: '처리 완료',
+            message: `${targetMonth}월 배치 처리가 완료되었습니다. (${batchData.length}건)`,
+            type: 'success',
+            onConfirm: () => {
+              setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+              if (onSuccess) onSuccess();
+              onClose();
+            }
+          });
+        } catch (error) {
+          console.error('Batch execution failed:', error);
+          setConfirmConfig({
+            isOpen: true,
+            title: '실행 오류',
+            message: '배치 실행 중 오류가 발생했습니다.',
+            type: 'danger',
+            onConfirm: () => setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const dayConfig = [

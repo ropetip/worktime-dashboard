@@ -9,6 +9,7 @@ import MemberManagement from './components/MemberManagement';
 import { Settings, Users, LogOut } from 'lucide-react';
 import { fetchMembers } from './memberLogic';
 import Login from './components/Login';
+import ConfirmModal from './components/ConfirmModal';
 
 const STORAGE_KEY = 'worktime_dashboard_shifts';
 
@@ -29,6 +30,15 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     localStorage.getItem('isAuthenticated') === 'true'
   );
+
+  // 커스텀 확인 창 상태
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {}
+  });
 
   // DB에서 데이터 가져오기
   const fetchSchedules = async () => {
@@ -94,19 +104,34 @@ function App() {
 
   const handleSaveSchedule = async (formData) => {
     const { id, date, name, time, reason } = formData;
+    const userEmail = localStorage.getItem('userEmail') || 'unknown';
+    const now = new Date().toISOString();
     
     let result;
     if (id) {
       // 수정 (Update)
       result = await supabase
         .from('schedules')
-        .update({ date, name, time, reason })
+        .update({ 
+          date, 
+          name, 
+          time, 
+          reason,
+          mod_id: userEmail,
+          mod_dt: now
+        })
         .eq('id', id);
     } else {
       // 신규 추가 (Insert)
       result = await supabase
         .from('schedules')
-        .insert([{ date, name, time, reason }]);
+        .insert([{ 
+          date, 
+          name, 
+          time, 
+          reason,
+          create_id: userEmail 
+        }]);
     }
 
     if (result.error) {
@@ -118,18 +143,27 @@ function App() {
     }
   };
 
-  const handleDeleteSchedule = async (id) => {
-    const { error } = await supabase
-      .from('schedules')
-      .delete()
-      .eq('id', id);
+  const handleDeleteSchedule = (id) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: '일정 삭제',
+      message: '이 일정을 정말 삭제하시겠습니까?',
+      type: 'danger',
+      onConfirm: async () => {
+        const { error } = await supabase
+          .from('schedules')
+          .delete()
+          .eq('id', id);
 
-    if (error) {
-      console.error('Error deleting schedule:', error);
-      alert('일정 삭제 중 오류가 발생했습니다.');
-    } else {
-      fetchSchedules(); // 목록 갱신
-    }
+        if (error) {
+          console.error('Error deleting schedule:', error);
+          alert('일정 삭제 중 오류가 발생했습니다.');
+        } else {
+          fetchSchedules();
+        }
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   if (!isAuthenticated) {
@@ -137,9 +171,18 @@ function App() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userEmail');
-    setIsAuthenticated(false);
+    setConfirmConfig({
+      isOpen: true,
+      title: '로그아웃',
+      message: '정말 로그아웃 하시겠습니까?',
+      type: 'warning',
+      onConfirm: () => {
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userEmail');
+        setIsAuthenticated(false);
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   return (
@@ -202,6 +245,7 @@ function App() {
         onClose={() => setIsPresetOpen(false)}
         onSuccess={fetchSchedules}
         members={members}
+        setConfirmConfig={setConfirmConfig}
       />
 
       <MemberManagement
@@ -212,6 +256,16 @@ function App() {
           const mData = await fetchMembers();
           setMembers(mData || []);
         }}
+        setConfirmConfig={setConfirmConfig}
+      />
+
+      <ConfirmModal 
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        type={confirmConfig.type}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

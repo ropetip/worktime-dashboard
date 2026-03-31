@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { addMember, deleteMember } from '../memberLogic';
 import { X, Users, Plus, Trash2, UserPlus } from 'lucide-react';
 
-const MemberManagement = ({ isOpen, onClose, members, onMemberUpdate }) => {
+const MemberManagement = ({ isOpen, onClose, members, onMemberUpdate, setConfirmConfig }) => {
   const [newMemberName, setNewMemberName] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -16,20 +16,40 @@ const MemberManagement = ({ isOpen, onClose, members, onMemberUpdate }) => {
       setNewMemberName('');
       if (onMemberUpdate) onMemberUpdate();
     } catch (error) {
-      alert('인원 추가 중 오류가 발생했습니다. (중복 이름 등)');
+      setConfirmConfig({
+        isOpen: true,
+        title: '추가 오류',
+        message: '인원 추가 중 오류가 발생했습니다. (중복 이름 등)',
+        type: 'danger',
+        onConfirm: () => setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteMember = async (id) => {
-    if (!window.confirm('해당 인원을 전체 목록에서 삭제하시겠습니까?')) return;
-    try {
-      await deleteMember(id);
-      if (onMemberUpdate) onMemberUpdate();
-    } catch (error) {
-      alert('인원 삭제 중 오류가 발생했습니다.');
-    }
+  const handleDeleteMember = (id) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: '구성원 삭제',
+      message: '해당 인원을 전체 목록에서 정말 삭제하시겠습니까?',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteMember(id);
+          if (onMemberUpdate) onMemberUpdate();
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        } catch (error) {
+          setConfirmConfig({
+            isOpen: true,
+            title: '삭제 오류',
+            message: '인원 삭제 중 오류가 발생했습니다.',
+            type: 'danger',
+            onConfirm: () => setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+          });
+        }
+      }
+    });
   };
 
   return (
