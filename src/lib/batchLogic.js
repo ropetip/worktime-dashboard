@@ -4,10 +4,11 @@ import { supabase } from './supabase';
 /**
  * 특정 월의 요일별 규칙에 따른 스케줄 데이터를 생성합니다.
  * @param {string} dateStr 'YYYY-MM' 형식의 연월
- * @param {Object} rules { 1: '이름', 2: '이름', ... } // 1(월)~5(금)
+ * @param {Object} memberDefaults { '이름': '0900', ... }
+ * @param {Object} weekdayRules { 1: [{name, time}, ...], ... } // 1(월)~5(금)
  * @returns {Array} 생성된 스케줄 객체 배열
  */
-export const generateMonthlyBatchData = (dateStr, rules) => {
+export const generateMonthlyBatchData = (dateStr, memberDefaults, weekdayRules) => {
   const [year, month] = dateStr.split('-').map(Number);
   const targetDate = new Date(year, month - 1, 1);
   
@@ -21,14 +22,23 @@ export const generateMonthlyBatchData = (dateStr, rules) => {
     if (isWeekend(day)) return;
 
     const dayOfWeek = getDay(day); // 0(일)~6(토)
-    const dayRules = rules[dayOfWeek] || [];
+    const dayNameRules = (weekdayRules[dayOfWeek] || []).reduce((acc, curr) => {
+      acc[curr.name] = curr.time;
+      return acc;
+    }, {});
 
-    dayRules.forEach(rule => {
-      if (rule.name) {
+    // 모든 구성원에 대해 처리
+    Object.keys(memberDefaults).forEach(name => {
+      const defaultTime = memberDefaults[name];
+      const exceptionTime = dayNameRules[name];
+      
+      const sessionTime = exceptionTime || defaultTime;
+
+      if (sessionTime && sessionTime !== 'NONE') {
         batchData.push({
           date: format(day, 'yyyy-MM-dd'),
-          name: rule.name,
-          time: rule.time || '0900',
+          name: name,
+          time: sessionTime,
           reason: '프리셋'
         });
       }

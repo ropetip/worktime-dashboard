@@ -10,12 +10,52 @@ import {
   isSameMonth, 
   isSameDay, 
   addDays, 
-  eachDayOfInterval 
+  eachDayOfInterval,
+  isBefore,
+  isAfter
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, RefreshCw } from 'lucide-react';
 import ShiftTag from './ShiftTag';
 
-const Calendar = ({ currentDate, setCurrentDate, shiftsData, onDateClick, onAddClick, onShiftClick }) => {
+const Calendar = ({ currentDate, setCurrentDate, shiftsData, searchTerm, onDateClick, onRangeSelect, onShiftClick }) => {
+  const [selectionRange, setSelectionRange] = React.useState(null); // { start, end }
+  const [isSelecting, setIsSelecting] = React.useState(false);
+
+  // 전역 마우스 업 리스너
+  React.useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isSelecting && selectionRange) {
+        if (!isSameDay(selectionRange.start, selectionRange.end)) {
+          // 기간 선택 완료
+          if (onRangeSelect) onRangeSelect(selectionRange);
+        }
+      }
+      setIsSelecting(false);
+    };
+
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isSelecting, selectionRange, onRangeSelect]);
+
+  const handleMouseDown = (date) => {
+    setSelectionRange({ start: date, end: date });
+    setIsSelecting(true);
+    onDateClick(date);
+  };
+
+  const handleMouseEnter = (date) => {
+    if (isSelecting) {
+      setSelectionRange(prev => ({ ...prev, end: date }));
+    }
+  };
+
+  const isBetween = (day, range) => {
+    if (!range) return false;
+    const { start, end } = range;
+    const s = isBefore(start, end) ? start : end;
+    const e = isBefore(start, end) ? end : start;
+    return (isAfter(day, s) || isSameDay(day, s)) && (isBefore(day, e) || isSameDay(day, e));
+  };
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const startDate = startOfWeek(monthStart);
@@ -23,11 +63,6 @@ const Calendar = ({ currentDate, setCurrentDate, shiftsData, onDateClick, onAddC
 
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const goToToday = () => {
-    const today = new Date();
-    setCurrentDate(today);
-    onDateClick(today);
-  };
 
   const renderHeader = () => (
     <div className="calendar-nav">
@@ -38,10 +73,6 @@ const Calendar = ({ currentDate, setCurrentDate, shiftsData, onDateClick, onAddC
       </div>
       <h2>{format(currentDate, 'yyyy년 M월')}</h2>
       <div className="nav-right">
-        <button className="nav-btn today" onClick={goToToday}>오늘</button>
-        <button className="btn-add" onClick={onAddClick}>
-          <Plus size={16} /> 일정 추가
-        </button>
         <button className="nav-btn" onClick={nextMonth}>
           다음 달 <ChevronRight size={20} />
         </button>
@@ -79,11 +110,14 @@ const Calendar = ({ currentDate, setCurrentDate, shiftsData, onDateClick, onAddC
         const sortedShifts = [...shifts].sort((a, b) => a.time.localeCompare(b.time));
 
         const currentDay = day; // 현재 루프의 날짜 고정 (클로저 이슈 방지)
+        const isSelected = isBetween(day, selectionRange);
+
         days.push(
           <div
             key={formattedDate}
-            className={`calendar-day ${!isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
-            onClick={() => onDateClick(currentDay)}
+            className={`calendar-day ${!isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`}
+            onMouseDown={() => handleMouseDown(currentDay)}
+            onMouseEnter={() => handleMouseEnter(currentDay)}
           >
             <span className="day-number">{format(day, 'd')}</span>
             <div className="shift-tags-container">
@@ -92,6 +126,7 @@ const Calendar = ({ currentDate, setCurrentDate, shiftsData, onDateClick, onAddC
                   key={shift.id || `${formattedDate}-${shift.name}-${idx}`} 
                   shift={shift} 
                   onClick={() => onShiftClick(formattedDate, shift)}
+                  onMouseDown={(e) => e.stopPropagation()} // 드래그 시작 방지
                 />
               ))}
             </div>

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { format, isSameMonth, parseISO, startOfMonth, endOfMonth } from 'date-fns';
+import { format, isSameMonth, parseISO, startOfMonth, endOfMonth, isBefore, eachDayOfInterval } from 'date-fns';
 import { supabase } from './lib/supabase';
 import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
 import ScheduleModal from './components/ScheduleModal';
 import PresetManagement from './components/PresetManagement';
 import MemberManagement from './components/MemberManagement';
-import { Settings, Users, LogOut } from 'lucide-react';
+import { Settings, Users, LogOut, Plus, RefreshCw } from 'lucide-react';
 import { fetchMembers } from './memberLogic';
 import Login from './components/Login';
 import ConfirmModal from './components/ConfirmModal';
@@ -18,7 +18,6 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(new Date()); // 대시보드 표시 날짜
   const [dbShifts, setDbShifts] = useState([]); // DB에서 가져온 특이 일정 데이터
   const [members, setMembers] = useState([]); // DB에서 가져온 인원 데이터
-  const [loading, setLoading] = useState(true);
 
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
@@ -30,6 +29,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     localStorage.getItem('isAuthenticated') === 'true'
   );
+  const [searchTerm, setSearchTerm] = useState(''); // 검색어 상태 추가
 
   // 커스텀 확인 창 상태
   const [confirmConfig, setConfirmConfig] = useState({
@@ -41,13 +41,15 @@ function App() {
   });
 
   // DB에서 데이터 가져오기
-  const fetchSchedules = async () => {
-    setLoading(true);
+  const fetchSchedules = async (overrideDate = null) => {
+    
+    // DB 데이터
+    const targetDate = overrideDate || currentDate;
+    const start = format(startOfMonth(targetDate), 'yyyy-MM-dd');
+    const end = format(endOfMonth(targetDate), 'yyyy-MM-dd');
+
     const mData = await fetchMembers();
     setMembers(mData || []);
-
-    const start = format(startOfMonth(currentDate), 'yyyy-MM-dd');
-    const end = format(endOfMonth(currentDate), 'yyyy-MM-dd');
 
     const { data, error } = await supabase
       .from('schedules')
@@ -60,7 +62,6 @@ function App() {
     } else {
       setDbShifts(data || []);
     }
-    setLoading(false);
   };
 
   // 초기 로드 및 월 변경 시 페칭
@@ -103,13 +104,13 @@ function App() {
   }, [dbShifts]);
 
   const handleSaveSchedule = async (formData) => {
-    const { id, date, name, time, reason } = formData;
+    const { id, date, name, time, reason, dates } = formData; // dates는 배열일 수 있음
     const userEmail = localStorage.getItem('userEmail') || 'unknown';
     const now = new Date().toISOString();
     
     let result;
     if (id) {
-      // 수정 (Update)
+      // 수정 (Update) - 단건
       result = await supabase
         .from('schedules')
         .update({ 
@@ -121,8 +122,20 @@ function App() {
           mod_dt: now
         })
         .eq('id', id);
+    } else if (dates && dates.length > 0) {
+      // 다건 등록 (Insert range)
+      const batchData = dates.map(d => ({
+        date: d,
+        name,
+        time,
+        reason,
+        create_id: userEmail
+      }));
+      result = await supabase
+        .from('schedules')
+        .insert(batchData);
     } else {
-      // 신규 추가 (Insert)
+      // 신규 추가 (Insert single)
       result = await supabase
         .from('schedules')
         .insert([{ 
@@ -139,8 +152,27 @@ function App() {
       alert('일정 저장 중 오류가 발생했습니다.');
     } else {
       fetchSchedules(); // 목록 갱신
-      setSelectedDate(parseISO(date));
+      if (date) setSelectedDate(parseISO(date));
+      else if (dates && dates.length > 0) setSelectedDate(parseISO(dates[0]));
     }
+  };
+
+  // 기간 선택 시 모달 오픈
+  const handleRangeSelect = (range) => {
+    const { start, end } = range;
+    const s = isBefore(start, end) ? start : end;
+    const e = isBefore(start, end) ? end : start;
+    const days = eachDayOfInterval({ start: s, end: e });
+    const formattedDates = days.map(d => format(d, 'yyyy-MM-dd'));
+
+    setModalConfig({
+      isOpen: true,
+      initialData: {
+        dates: formattedDates,
+        date: formattedDates[0], // 표시용
+        isRange: true
+      }
+    });
   };
 
   const handleDeleteSchedule = (id) => {
@@ -170,6 +202,34 @@ function App() {
     return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
   }
 
+  const handleResetMonth = () => {
+    const monthStr = format(currentDate, 'yyyy년 M월');
+    setConfirmConfig({
+      isOpen: true,
+      title: '월간 데이터 초기화',
+      message: `${monthStr}의 모든 일정을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
+      type: 'danger',
+      onConfirm: async () => {
+        const start = format(startOfMonth(currentDate), 'yyyy-MM-dd');
+        const end = format(endOfMonth(currentDate), 'yyyy-MM-dd');
+
+        const { error } = await supabase
+          .from('schedules')
+          .delete()
+          .gte('date', start)
+          .lte('date', end);
+
+        if (error) {
+          console.error('Error resetting month:', error);
+          alert('초기화 중 오류가 발생했습니다.');
+        } else {
+          fetchSchedules();
+        }
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
   const handleLogout = () => {
     setConfirmConfig({
       isOpen: true,
@@ -185,9 +245,36 @@ function App() {
     });
   };
 
+  // 검색어로 필터링된 데이터 (달력 표시용)
+  const filteredShiftsData = useMemo(() => {
+    if (!searchTerm) return shiftsData;
+    
+    const filtered = {};
+    Object.keys(shiftsData).forEach(date => {
+      const dayData = shiftsData[date];
+      const matchingShifts = dayData.shifts.filter(s => 
+        s.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      
+      if (matchingShifts.length > 0) {
+        filtered[date] = { ...dayData, shifts: matchingShifts };
+      }
+    });
+    return filtered;
+  }, [shiftsData, searchTerm]);
+
   return (
     <div className="container">
       <div className="header-actions-fixed">
+        <div className="search-container mr-4">
+          <input 
+            type="text" 
+            placeholder="구성원 이름 검색..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
         <button 
           className="btn-preset-open mr-2"
           onClick={handleLogout}
@@ -213,14 +300,45 @@ function App() {
 
       <Dashboard 
         selectedDate={selectedDate} 
-        shiftsData={shiftsData} 
+        shiftsData={filteredShiftsData} 
       />
+
+      <div className="calendar-actions-top">
+        <button 
+          className="nav-btn refresh" 
+          onClick={() => fetchSchedules()}
+          title="조회 (새로고침)"
+        >
+          <RefreshCw size={16} /> 조회
+        </button>
+        <button 
+          className="nav-btn today" 
+          onClick={() => {
+            const today = new Date();
+            setCurrentDate(today);
+            setSelectedDate(today);
+          }}
+        >오늘</button>
+        <button 
+          className="btn-add" 
+          onClick={() => setModalConfig({ 
+            isOpen: true, 
+            initialData: { date: format(selectedDate, 'yyyy-MM-dd') } 
+          })}
+        >
+          <Plus size={16} /> 일정 추가
+        </button>
+        <button className="nav-btn reset" onClick={handleResetMonth}>초기화</button>
+      </div>
 
       <Calendar 
         currentDate={currentDate} 
         setCurrentDate={setCurrentDate} 
-        shiftsData={shiftsData}
+        shiftsData={filteredShiftsData}
+        searchTerm={searchTerm}
         onDateClick={(date) => setSelectedDate(date)}
+        onRangeSelect={handleRangeSelect}
+        onResetMonth={handleResetMonth}
         onAddClick={() => setModalConfig({ 
           isOpen: true, 
           initialData: { date: format(selectedDate, 'yyyy-MM-dd') } 
@@ -243,7 +361,23 @@ function App() {
       <PresetManagement 
         isOpen={isPresetOpen}
         onClose={() => setIsPresetOpen(false)}
-        onSuccess={fetchSchedules}
+        onSuccess={async (targetMonth, count) => {
+          let newDate = currentDate;
+          if (targetMonth) {
+            const [year, month] = targetMonth.split('-');
+            newDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+            setCurrentDate(newDate);
+            setSelectedDate(newDate);
+          }
+          await fetchSchedules(newDate);
+          setConfirmConfig({
+            isOpen: true,
+            title: '처리 완료',
+            message: `${targetMonth}월 배치 처리가 완료되었습니다. (${count}건)`,
+            type: 'success',
+            onConfirm: () => setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+          });
+        }}
         members={members}
         setConfirmConfig={setConfirmConfig}
       />

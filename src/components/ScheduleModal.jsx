@@ -4,7 +4,9 @@ import { X } from 'lucide-react';
 
 const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData, members }) => {
   const [formData, setFormData] = useState({
+    id: null,
     date: '',
+    dates: [], // 기간 선택용
     name: '',
     time: '0900',
     reason: ''
@@ -16,6 +18,7 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData, members
       setFormData({
         id: initialData.id || null,
         date: initialData.date || '',
+        dates: initialData.dates || [],
         name: initialData.name || '',
         time: initialData.time || '0900',
         reason: initialData.reason || ''
@@ -24,6 +27,7 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData, members
       setFormData({
         id: null,
         date: new Date().toISOString().split('T')[0],
+        dates: [],
         name: '',
         time: '0900',
         reason: ''
@@ -36,7 +40,7 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData, members
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.date) return setError('날짜를 선택해주세요.');
+    if (!formData.date && formData.dates.length === 0) return setError('날짜를 선택해주세요.');
     if (!formData.name) return setError('대상자를 선택해주세요.');
     
     onSave(formData);
@@ -48,6 +52,7 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData, members
       setFormData({
         id: initialData.id || null,
         date: initialData.date || '',
+        dates: initialData.dates || [],
         name: initialData.name || '',
         time: initialData.time || '0900',
         reason: initialData.reason || ''
@@ -76,12 +81,18 @@ const ScheduleModal = ({ isOpen, onClose, onSave, onDelete, initialData, members
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>선택된 날짜</label>
-            <input 
-              type="date" 
-              value={formData.date}
-              onChange={e => setFormData({ ...formData, date: e.target.value })}
-            />
+            <label>{formData.dates?.length > 1 ? '선택된 기간' : '선택된 날짜'}</label>
+            {formData.dates?.length > 1 ? (
+              <div className="date-range-display">
+                {formData.dates[0]} ~ {formData.dates[formData.dates.length - 1]} ({formData.dates.length}일)
+              </div>
+            ) : (
+              <input 
+                type="date" 
+                value={formData.date}
+                onChange={e => setFormData({ ...formData, date: e.target.value })}
+              />
+            )}
           </div>
           
           <div className="form-group">
