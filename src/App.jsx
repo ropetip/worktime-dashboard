@@ -198,6 +198,24 @@ function App() {
     });
   };
 
+  // 검색어로 필터링된 데이터 (달력 표시용)
+  const filteredShiftsData = useMemo(() => {
+    if (!searchTerm) return shiftsData;
+    
+    const filtered = {};
+    Object.keys(shiftsData).forEach(date => {
+      const dayData = shiftsData[date];
+      const matchingShifts = dayData.shifts.filter(s => 
+        s.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      
+      if (matchingShifts.length > 0) {
+        filtered[date] = { ...dayData, shifts: matchingShifts };
+      }
+    });
+    return filtered;
+  }, [shiftsData, searchTerm]);
+
   if (!isAuthenticated) {
     return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
   }
@@ -244,24 +262,6 @@ function App() {
       }
     });
   };
-
-  // 검색어로 필터링된 데이터 (달력 표시용)
-  const filteredShiftsData = useMemo(() => {
-    if (!searchTerm) return shiftsData;
-    
-    const filtered = {};
-    Object.keys(shiftsData).forEach(date => {
-      const dayData = shiftsData[date];
-      const matchingShifts = dayData.shifts.filter(s => 
-        s.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      
-      if (matchingShifts.length > 0) {
-        filtered[date] = { ...dayData, shifts: matchingShifts };
-      }
-    });
-    return filtered;
-  }, [shiftsData, searchTerm]);
 
   return (
     <div className="container">
