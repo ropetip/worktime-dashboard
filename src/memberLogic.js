@@ -7,6 +7,7 @@ export const fetchMembers = async () => {
   const { data, error } = await supabase
     .from('members')
     .select('*')
+    .neq('sts', 'D')
     .order('name', { ascending: true });
 
   if (error) {
@@ -23,7 +24,7 @@ export const addMember = async (name) => {
   const userEmail = localStorage.getItem('userEmail') || 'unknown';
   const { data, error } = await supabase
     .from('members')
-    .insert([{ name, create_id: userEmail }])
+    .insert([{ name, sts: 'C', create_id: userEmail }])
     .select();
 
   if (error) throw error;
@@ -36,7 +37,7 @@ export const addMember = async (name) => {
 export const deleteMember = async (id) => {
   const { error } = await supabase
     .from('members')
-    .delete()
+    .update({ sts: 'D' })
     .eq('id', id);
 
   if (error) throw error;

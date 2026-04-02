@@ -63,10 +63,10 @@ export const executeBatchInsert = async (dateStr, batchData) => {
   // 여기서는 안전을 위해 기존 배치 생성 데이터만 삭제하거나, 사용자 요청대로 전체 삭제 후 재생성
   const { error: deleteError } = await supabase
     .from('schedules')
-    .delete()
+    .update({ sts: 'D' })
     .gte('date', start)
     .lte('date', end)
-    .eq('reason', '프리셋'); // 프리셋으로 생성된 것만 삭제
+    .eq('reason', '프리셋'); // 프리셋으로 생성된 것만 삭제 처리
 
   if (deleteError) throw deleteError;
 
@@ -76,6 +76,7 @@ export const executeBatchInsert = async (dateStr, batchData) => {
   const userEmail = localStorage.getItem('userEmail') || 'unknown';
   const finalBatchData = batchData.map(item => ({
     ...item,
+    sts: 'C',
     create_id: userEmail
   }));
 

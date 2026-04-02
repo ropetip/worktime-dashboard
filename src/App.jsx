@@ -10,10 +10,13 @@ import { Settings, Users, LogOut, Plus, RefreshCw } from 'lucide-react';
 import { fetchMembers } from './memberLogic';
 import Login from './components/Login';
 import ConfirmModal from './components/ConfirmModal';
+import { useRef } from 'react';
 
 const STORAGE_KEY = 'worktime_dashboard_shifts';
 
 function App() {
+  const fetchControllerRef = useRef(null); // 중복 요청 제어용
+  const debounceTimerRef = useRef(null); // 실시간 리스너 디바운스용
   const [currentDate, setCurrentDate] = useState(new Date()); // 달력 표시 기준 월
   const [selectedDate, setSelectedDate] = useState(new Date()); // 대시보드 표시 날짜
   const [dbShifts, setDbShifts] = useState([]); // DB에서 가져온 특이 일정 데이터
@@ -42,25 +45,40 @@ function App() {
 
   // DB에서 데이터 가져오기
   const fetchSchedules = async (overrideDate = null) => {
-    
-    // DB 데이터
-    const targetDate = overrideDate || currentDate;
-    const start = format(startOfMonth(targetDate), 'yyyy-MM-dd');
-    const end = format(endOfMonth(targetDate), 'yyyy-MM-dd');
+    // 이전 진행 중인 요청이 있다면 취소
+    if (fetchControllerRef.current) {
+      fetchControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    fetchControllerRef.current = controller;
 
-    const mData = await fetchMembers();
-    setMembers(mData || []);
+    try {
+      // DB 데이터
+      const targetDate = overrideDate || currentDate;
+      const start = format(startOfMonth(targetDate), 'yyyy-MM-dd');
+      const end = format(endOfMonth(targetDate), 'yyyy-MM-dd');
 
-    const { data, error } = await supabase
-      .from('schedules')
-      .select('*')
-      .gte('date', start)
-      .lte('date', end);
+      const mData = await fetchMembers();
+      setMembers(mData || []);
 
-    if (error) {
-      console.error('Error fetching schedules:', error);
-    } else {
-      setDbShifts(data || []);
+      const { data, error } = await supabase
+        .from('schedules')
+        .select('*')
+        .neq('sts', 'D')
+        .gte('date', start)
+        .lte('date', end)
+        .abortSignal(controller.signal);
+
+      if (error) {
+        // 이미 취소된 요청은 에러 무시
+        if (error.name === 'AbortError' || error.code === '20') return;
+        console.error('Error fetching schedules:', error);
+      } else {
+        setDbShifts(data || []);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error('Fetch error:', err);
     }
   };
 
@@ -68,17 +86,25 @@ function App() {
   useEffect(() => {
     fetchSchedules();
 
-    // 실시간 구독 설정
+    // 실시간 구독 설정 - 디바운스 적용하여 중복 요청 최소화
+    const handleChanges = () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        fetchSchedules();
+      }, 300);
+    };
+
     const channel = supabase
       .channel('schema-db-changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'schedules' }, 
-        () => fetchSchedules()
+        handleChanges
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   }, [currentDate]);
 
@@ -118,6 +144,7 @@ function App() {
           name, 
           time, 
           reason,
+          sts: 'U',
           mod_id: userEmail,
           mod_dt: now
         })
@@ -129,6 +156,7 @@ function App() {
         name,
         time,
         reason,
+        sts: 'C',
         create_id: userEmail
       }));
       result = await supabase
@@ -143,6 +171,7 @@ function App() {
           name, 
           time, 
           reason,
+          sts: 'C',
           create_id: userEmail 
         }]);
     }
@@ -184,7 +213,7 @@ function App() {
       onConfirm: async () => {
         const { error } = await supabase
           .from('schedules')
-          .delete()
+          .update({ sts: 'D' })
           .eq('id', id);
 
         if (error) {
@@ -233,7 +262,7 @@ function App() {
 
         const { error } = await supabase
           .from('schedules')
-          .delete()
+          .update({ sts: 'D' })
           .gte('date', start)
           .lte('date', end);
 
