@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, ShieldCheck, ArrowRight, Loader2, Bell } from 'lucide-react';
 import { generateOTP, sendOTPViaFlow, saveOTPToDB, verifyOTP } from '../lib/flowApi';
 import '../styles/Login.css';
 
@@ -10,6 +10,9 @@ const Login = ({ onLoginSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [countdown, setCountdown] = useState(0);
+
+    // 지연 시간 함수
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     // 카운트다운 타이머
     useEffect(() => {
@@ -29,7 +32,7 @@ const Login = ({ onLoginSuccess }) => {
 
         setLoading(true);
         setError('');
-
+        
         const newOtp = generateOTP();
         
         // 1. FLOW API 발송
@@ -141,7 +144,10 @@ const Login = ({ onLoginSuccess }) => {
                 {step === 1 ? (
                     <form className="login-form" onSubmit={handleSendOTP}>
                         <div className="input-group">
-                            <label>Email Address</label>
+                            <label>Flow Account ID (Email)</label>
+                            <p style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.5rem', marginTop: '-0.25rem' }}>
+                                인증번호가 **플로우(Flow) 메신저** 알림으로 전송됩니다.
+                            </p>
                             <div style={{ position: 'relative' }}>
                                 <Mail size={18} style={{ position: 'absolute', left: '14px', top: '14px', color: '#a0aec0' }} />
                                 <input
@@ -159,7 +165,7 @@ const Login = ({ onLoginSuccess }) => {
                         {error && <div className="error-message">{error}</div>}
 
                         <button type="submit" className="btn-primary-login" disabled={loading}>
-                            {loading ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'Send Verification Code'}
+                            {loading ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'Send Flow Verification Code'}
                         </button>
                     </form>
                 ) : (
@@ -167,7 +173,7 @@ const Login = ({ onLoginSuccess }) => {
                         <div className="input-group">
                             <label>Verification Code</label>
                             <p style={{ fontSize: '0.8rem', color: '#718096', marginBottom: '1rem' }}>
-                                {email} (으)로 전송된 6자리 코드를 입력하세요.
+                                <strong>플로우(Flow) 메신저</strong>로 전송된 6자리 코드를 입력하세요.
                             </p>
                             <div className="otp-inputs">
                                 {otpCode.map((digit, index) => (
@@ -197,7 +203,7 @@ const Login = ({ onLoginSuccess }) => {
                         </button>
 
                         <div className="resend-link" onClick={() => { setStep(1); setOtpCode(['', '', '', '', '', '']); }}>
-                            이메일 다시 입력하기
+                            플로우 계정 다시 입력하기
                         </div>
                     </form>
                 )}
